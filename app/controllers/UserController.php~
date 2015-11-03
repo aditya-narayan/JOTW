@@ -1,0 +1,222 @@
+<?php
+ 
+use Phalcon\Mvc\Model\Criteria;
+use Phalcon\Paginator\Adapter\Model as Paginator;
+
+class UserController extends ControllerBase
+{
+
+    /**
+     * Index action
+     */
+    public function indexAction()
+    {
+        $this->persistent->parameters = null;
+    }
+
+    /**
+     * Searches for User
+     */
+    public function searchAction()
+    {
+
+        $numberPage = 1;
+        if ($this->request->isPost()) {
+            $query = Criteria::fromInput($this->di, "User", $_POST);
+            $this->persistent->parameters = $query->getParams();
+        } else {
+            $numberPage = $this->request->getQuery("page", "int");
+        }
+
+        $parameters = $this->persistent->parameters;
+        if (!is_array($parameters)) {
+            $parameters = array();
+        }
+        $parameters["order"] = "id_user";
+
+        $User = User::find($parameters);
+        if (count($User) == 0) {
+            $this->flash->notice("The search did not find any User");
+
+            return $this->dispatcher->forward(array(
+                "controller" => "User",
+                "action" => "index"
+            ));
+        }
+
+        $paginator = new Paginator(array(
+            "data" => $User,
+            "limit"=> 10,
+            "page" => $numberPage
+        ));
+
+        $this->view->page = $paginator->getPaginate();
+    }
+
+    /**
+     * Displays the creation form
+     */
+    public function newAction()
+    {
+ 
+    }
+
+    /**
+     * Edits a User
+     *
+     * @param string $id_user
+     */
+    public function editAction($id_user)
+    {
+
+        if (!$this->request->isPost()) {
+
+            $User = User::findFirstByid_user($id_user);
+            if (!$User) {
+                $this->flash->error("User was not found");
+
+                return $this->dispatcher->forward(array(
+                    "controller" => "User",
+                    "action" => "index"
+                ));
+            }
+
+            $this->view->id_user = $User->id_user;
+
+            $this->tag->setDefault("id_user", $User->id_user);
+            $this->tag->setDefault("name", $User->name);
+            $this->tag->setDefault("email", $User->email);
+            
+        }
+    }
+
+    /**
+     * Creates a new User
+     */
+    public function createAction()
+    {
+
+        if (!$this->request->isPost()) {
+            return $this->dispatcher->forward(array(
+                "controller" => "User",
+                "action" => "index"
+            ));
+        }
+
+        $User = new User();
+
+        $User->name = $this->request->getPost("name");
+        $User->email = $this->request->getPost("email", "email");
+        
+
+        if (!$User->save()) {
+            foreach ($User->getMessages() as $message) {
+                $this->flash->error($message);
+            }
+
+            return $this->dispatcher->forward(array(
+                "controller" => "User",
+                "action" => "new"
+            ));
+        }
+
+        $this->flash->success("User was created successfully");
+
+        return $this->dispatcher->forward(array(
+            "controller" => "User",
+            "action" => "index"
+        ));
+
+    }
+
+    /**
+     * Saves a User edited
+     *
+     */
+    public function saveAction()
+    {
+
+        if (!$this->request->isPost()) {
+            return $this->dispatcher->forward(array(
+                "controller" => "User",
+                "action" => "index"
+            ));
+        }
+
+        $id_user = $this->request->getPost("id_user");
+
+        $User = User::findFirstByid_user($id_user);
+        if (!$User) {
+            $this->flash->error("User does not exist " . $id_user);
+
+            return $this->dispatcher->forward(array(
+                "controller" => "User",
+                "action" => "index"
+            ));
+        }
+
+        $User->name = $this->request->getPost("name");
+        $User->email = $this->request->getPost("email", "email");
+        
+
+        if (!$User->save()) {
+
+            foreach ($User->getMessages() as $message) {
+                $this->flash->error($message);
+            }
+
+            return $this->dispatcher->forward(array(
+                "controller" => "User",
+                "action" => "edit",
+                "params" => array($User->id_user)
+            ));
+        }
+
+        $this->flash->success("User was updated successfully");
+
+        return $this->dispatcher->forward(array(
+            "controller" => "User",
+            "action" => "index"
+        ));
+
+    }
+
+    /**
+     * Deletes a User
+     *
+     * @param string $id_user
+     */
+    public function deleteAction($id_user)
+    {
+
+        $User = User::findFirstByid_user($id_user);
+        if (!$User) {
+            $this->flash->error("User was not found");
+
+            return $this->dispatcher->forward(array(
+                "controller" => "User",
+                "action" => "index"
+            ));
+        }
+
+        if (!$User->delete()) {
+
+            foreach ($User->getMessages() as $message) {
+                $this->flash->error($message);
+            }
+
+            return $this->dispatcher->forward(array(
+                "controller" => "User",
+                "action" => "search"
+            ));
+        }
+
+        $this->flash->success("User was deleted successfully");
+
+        return $this->dispatcher->forward(array(
+            "controller" => "User",
+            "action" => "index"
+        ));
+    }
+
+}
